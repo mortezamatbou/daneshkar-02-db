@@ -16,5 +16,18 @@ services:
     networks:
       - daneshkarnetwork
 
+
+  # phpmyadmin:
+  #   image: phpmyadmin:latest
+  #   ports:
+  #     - 9090:80
+  #   environment:
+  #     - PMA_HOST: mariadb
+  #     - PMA_PASSWORD: test
+  #   volumes:
+  #     - mysql
+  #   networks:
+  #     - daneshkarnetwork
+
 networks:
   daneshkarnetwork: { }
