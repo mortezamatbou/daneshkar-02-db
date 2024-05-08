@@ -144,6 +144,9 @@ FROM (SELECT ROW_NUMBER() OVER (ORDER BY p.ProductID) AS id,
       GROUP BY d.ProductID) AS o
 GROUP BY o.CategoryID;
 
+-- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******----
+
+
 -- D ---------------------------------------------------------------
 -- تحلیل عملکرد کارمندان -------------------------------------------
 
@@ -206,11 +209,42 @@ ORDER BY total_income DESC;
 
 -- 13
 -- میانگین قیمت هر دسته چقدر است؟ (به همراه نام دسته و به ترتیب نزولی گزارش کنید)
+SELECT p.CategoryID, p.ProductID, p.ProductName, d.Quantity, p.Price, (d.Quantity * p.Price) AS total_price
+FROM OrderDetails AS d
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+WHERE d.ProductID IN (SELECT ProductID FROM Products WHERE CategoryID = 8);
 
+SELECT d.*, p.CategoryID
+FROM `OrderDetails` AS d
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+WHERE d.ProductID IN (SELECT ProductID FROM Products WHERE CategoryID = 8);
 
+SELECT c.CategoryID, c.CategoryName, AVG(d.Quantity * p.Price) AS avg_price
+FROM Products AS p
+         LEFT JOIN OrderDetails AS d ON d.ProductID = p.ProductID
+         LEFT JOIN Categories AS c ON c.CategoryID = p.CategoryID
+GROUP BY p.CategoryID
+ORDER BY avg_price DESC;
 
 -- 14
 -- گران‌ترین دسته‌بندی کدام است؟ (به همراه نام دسته گزارش کنید)
+SELECT c.CategoryID,
+       c.CategoryName,
+       COUNT(p.ProductID) AS num_of_products,
+       AVG(p.Price),
+       SUM(p.Price)       AS total_price
+FROM Categories AS c
+         LEFT JOIN Products AS p ON p.CategoryID = c.CategoryID
+GROUP BY c.CategoryID
+ORDER BY total_price DESC;
+
+SELECT c.CategoryID, c.CategoryName, COUNT(p.ProductID) AS num_of_products, SUM(p.Price) AS total_price
+FROM Categories AS c
+         LEFT JOIN Products AS p ON p.CategoryID = c.CategoryID
+GROUP BY c.CategoryID
+ORDER BY total_price DESC
+LIMIT 1;
+
 
 -- G ---------------------------------------------------------------
 -- روند سفارشات ----------------------------------------------------
@@ -218,11 +252,74 @@ ORDER BY total_income DESC;
 -- 15
 -- طی سال 1996 هر ماه چند سفارش ثبت شده است؟
 
+-- All Orders in 1996
+SELECT *
+FROM Orders
+WHERE YEAR(OrderDate) = '1996'
+  AND MONTH(OrderDate) BETWEEN '01' AND '12';
+
+-- Count of orders per month
+SELECT CONCAT(YEAR(OrderDate), "-", MONTH(OrderDate)) AS order_date, COUNT(*) AS num_of_orders
+FROM Orders
+GROUP BY YEAR(OrderDate), MONTH(OrderDate)
+ORDER BY YEAR(OrderDate) ASC, MONTH(OrderDate) ASC;
+
+-- Count of orders per month in 1996
+SELECT CONCAT(YEAR(OrderDate), "-", MONTH(OrderDate)) AS order_date, COUNT(*) AS num_of_orders
+FROM Orders
+WHERE YEAR(OrderDate) = '1996'
+GROUP BY YEAR(OrderDate), MONTH(OrderDate)
+ORDER BY MONTH(OrderDate) ASC;
+
+
 -- 16
 -- میانگین فاصله‌ی زمانی بین سفارشات هر مشتری چقدر بوده است؟ (به همراه نام مشتری و به صورت نزولی نشان دهید)
 
+-- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******----
+
+
 -- 17
 -- در هر فصل جمع سفارشات چقدر بوده است؟ (به نزولی نشان دهید)
+
+select T.date_time, SUM(T.amount)
+from (select *
+      from TEST_TABLE
+      where date_time >= DATE_ADD(CURDATE(), INTERVAL -3 MONTH)
+        and date_time <= CURDATE())
+         as T
+GROUP BY MONTH(T.date_time);
+
+SELECT *
+FROM (SELECT DATE_FORMAT(MIN(o.OrderDate), '%Y-%m-01') AS first_date, LAST_DAY(MAX(o.OrderDate)) AS last_date
+      FROM Orders AS o) AS days;
+
+SELECT *
+FROM Orders
+WHERE (month(d) BETWEEN start_month AND end_month)
+   OR (start_month > end_month AND (month(d) >= start_month OR month(d) <= end_month));
+
+-- helper sql --
+SELECT quantity, FLOOR((MONTH(date_field) % 12) / 3) as season
+FROM tbl
+GROUP BY season;
+-- ------------
+
+SELECT *
+FROM (SELECT *, FLOOR((MONTH(OrderDate) % 12) / 3) as season_id FROM Orders ORDER BY OrderDate ASC) AS O;
+
+
+SELECT YEAR(OrderDate)                            AS year,
+       CASE
+           WHEN O.season_id = 0 THEN "Spring"
+           WHEN O.season_id = 1 THEN "Summer"
+           WHEN O.season_id = 2 THEN "Autumn"
+           WHEN O.season_id = 3 THEN "Winter" END AS season,
+       SUM(d.Quantity * p.Price)                  AS total_price
+FROM (SELECT *, FLOOR((MONTH(OrderDate) % 12) / 3) as season_id FROM Orders ORDER BY OrderDate ASC) AS O
+         LEFT JOIN OrderDetails AS d ON d.OrderID = O.OrderID
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+GROUP BY YEAR(O.OrderDate), O.season_id
+ORDER BY total_price DESC;
 
 
 -- I ---------------------------------------------------------------
@@ -231,5 +328,39 @@ ORDER BY total_income DESC;
 -- 18
 -- کدام تامین کننده بیشترین تعداد کالا را تامین کرده است؟ (به همراه نام و ID گزارش کنید)
 
+-- Numbers of suppliers products
+SELECT p.SupplierID, s.SupplierName, COUNT(p.ProductID) AS num_of_products
+FROM Products AS p
+         LEFT JOIN Suppliers AS s ON s.SupplierID = p.SupplierID
+GROUP BY p.SupplierID
+ORDER BY num_of_products DESC;
+
+SELECT COUNT(*)
+FROM OrderDetails AS d
+WHERE d.ProductID IN (SELECT ProductID FROM Products WHERE SupplierID = 12);
+
+SELECT s.SupplierID, s.SupplierName, COUNT(d.ProductID) AS num_of_supplied
+FROM OrderDetails AS d
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+         LEFT JOIN Suppliers AS s ON s.SupplierID = p.SupplierID
+GROUP BY s.SupplierID
+ORDER BY num_of_supplied DESC;
+
+
 -- 19
 -- میانگین قیمت کالای تامین شده توسط هر تامین‌کننده چقدر بوده؟ (به همراه نام و ID و به صورت نزولی گزارش کنید)
+
+-- Average supplied price for single supplier
+SELECT s.SupplierID, s.SupplierName, AVG(d.Quantity * p.Price) AS avg_supplied_price
+FROM OrderDetails AS d
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+         LEFT JOIN Suppliers AS s ON s.SupplierID = p.SupplierID
+WHERE d.ProductID IN (SELECT ProductID FROM Products WHERE SupplierID = 18);
+
+-- Average supplied price for all suppliers
+SELECT s.SupplierID, s.SupplierName, AVG(d.Quantity * p.Price) AS avg_supplied_price
+FROM OrderDetails AS d
+         LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+         LEFT JOIN Suppliers AS s ON s.SupplierID = p.SupplierID
+GROUP BY s.SupplierID
+ORDER BY avg_supplied_price DESC;
