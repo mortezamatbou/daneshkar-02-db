@@ -275,8 +275,71 @@ ORDER BY MONTH(OrderDate) ASC;
 -- 16
 -- میانگین فاصله‌ی زمانی بین سفارشات هر مشتری چقدر بوده است؟ (به همراه نام مشتری و به صورت نزولی نشان دهید)
 
--- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******----
+SELECT CustomerID, (MAX(OrderDate) - MIN(OrderDate)) / (COUNT(*) - 1) AS avg_period_orders
+FROM Orders
+WHERE CustomerId = 14
+GROUP BY CustomerID
+HAVING COUNT(*) > 1;
 
+SELECT ABS(DATEDIFF("1996-12-27", "1997-02-03"));
+
+SELECT CustomerID, COUNT(OrderID) AS o
+FROM Orders
+GROUP BY CustomerID
+HAVING o > 1;
+
+SELECT o.CustomerID, o.OrderDate, LAG(o.OrderDate) OVER (ORDER BY o.OrderDate ASC) AS LagOrderDate
+FROM Orders AS o
+WHERE o.CustomerID = 60
+ORDER BY o.OrderDate ASC;
+
+SELECT o.CustomerID,
+       c.CustomerName,
+       o.OrderDate,
+       LAG(o.OrderDate) OVER (ORDER BY o.OrderDate ASC) AS PreviousOrderDate
+FROM Orders AS o
+         LEFT JOIN Customers AS c ON c.CustomerID = o.CustomerID
+WHERE o.CustomerID IN (68)
+GROUP BY o.OrderID
+ORDER BY o.OrderDate ASC;
+
+SELECT *
+FROM (SELECT o.CustomerID, o.OrderDate, LAG(o.OrderDate) OVER (ORDER BY o.OrderDate ASC) AS NextOrderDate
+      FROM Orders AS o
+      WHERE o.CustomerID = 60
+      GROUP BY o.OrderID
+      ORDER BY o.OrderDate ASC) AS o2;
+
+SELECT o2.CustomerID,
+       o2.OrderDate,
+       o2.PreviousOrderDate,
+       ABS(DATEDIFF(o2.OrderDate, PreviousOrderDate)) AS DayDiff
+
+FROM (SELECT o.CustomerID, o.OrderDate, LAG(o.OrderDate) OVER (ORDER BY o.OrderDate ASC) AS PreviousOrderDate
+      FROM Orders AS o
+      WHERE o.CustomerID = 60
+      GROUP BY o.OrderID
+      ORDER BY o.OrderDate ASC) AS o2
+WHERE o2.PreviousOrderDate IS NOT NULL;
+
+
+-- Final Query
+SELECT o2.CustomerID,
+       o2.CustomerName,
+       o2.OrderDate,
+       o2.PreviousOrderDate,
+       AVG(ABS(DATEDIFF(o2.OrderDate, PreviousOrderDate))) AS AvgDay
+FROM (SELECT o.CustomerID,
+             c.CustomerName,
+             o.OrderDate,
+             LAG(o.OrderDate) OVER (PARTITION BY o.CustomerID ORDER BY o.OrderDate ASC) AS PreviousOrderDate
+      FROM Orders AS o
+               LEFT JOIN Customers AS c ON c.CustomerID = o.CustomerID
+      GROUP BY o.OrderID
+      ORDER BY o.CustomerID ASC, o.OrderDate ASC) AS o2
+WHERE o2.PreviousOrderDate IS NOT NULL
+GROUP BY o2.CustomerID
+ORDER BY AvgDay DESC;
 
 -- 17
 -- در هر فصل جمع سفارشات چقدر بوده است؟ (به نزولی نشان دهید)
