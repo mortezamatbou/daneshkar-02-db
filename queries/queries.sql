@@ -132,7 +132,7 @@ FROM (SELECT d.ProductID, c.CategoryID, c.CategoryName, d.Quantity, p.Price, SUM
                LEFT JOIN Categories AS c ON c.CategoryID = p.CategoryID
       GROUP BY c.CategoryID, d.ProductID) AS o;
 
-SELECT o.id, o.ProductID, o.CategoryID, MAX(max_price)
+SELECT o.id, o.ProductID, o.CategoryID, MAX(max_price) AS max_price
 FROM (SELECT ROW_NUMBER() OVER (ORDER BY p.ProductID) AS id,
              c.CategoryID,
              p.ProductID,
@@ -142,7 +142,18 @@ FROM (SELECT ROW_NUMBER() OVER (ORDER BY p.ProductID) AS id,
                JOIN Products AS p ON p.ProductID = d.ProductID
                JOIN Categories AS c ON c.CategoryID = p.CategoryID
       GROUP BY d.ProductID) AS o
-GROUP BY o.CategoryID;
+GROUP BY o.CategoryID
+ORDER BY max_price DESC;
+
+SELECT o.ProductID, o.ProductName, o.CategoryID, o.CategoryName, MAX(o.total_price) AS highest_price
+FROM (SELECT p.ProductID, p.ProductName, p.CategoryID, c.CategoryName, (SUM(d.Quantity) * p.Price) AS total_price
+      FROM OrderDetails AS d
+               LEFT JOIN Products AS p ON p.ProductID = d.ProductID
+               LEFT JOIN Categories AS c ON c.CategoryID = p.CategoryID
+      GROUP BY d.ProductID
+      ORDER BY c.CategoryID ASC, total_price DESC) AS o
+GROUP BY o.CategoryID
+ORDER BY highest_price DESC;
 
 -- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******---- ----*******----
 
